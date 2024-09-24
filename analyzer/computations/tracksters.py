@@ -1,5 +1,5 @@
 from analyzer.driver.computations import DataframeComputation
-from analyzer.dumperReader.reader import DumperReader, tracksters_getSeeds, tracksters_toDf, trackster_basic_fields, CPToTracksterProperties
+from analyzer.dumperReader.reader import DumperReader, tracksters_getSeeds, tracksters_toDf, trackster_basic_fields, candidate_basic_fields, CPToTracksterProperties, CPToCandidateProperties
 from analyzer.driver.fileTools import SingleInputReader
 
 # cannot use a lambda as multirprocessing does not work due to pickle issues
@@ -20,9 +20,14 @@ def _CPtoTracksterAllShared_fct(reader:DumperReader):
             reader.simTrackstersCP_df)
 CPtoTracksterAllShared_properties = DataframeComputation(_CPtoTracksterAllShared_fct, "CPtoTracksterAllShared_properties")
 
-
 def _CPtoTracksterMerged_fct(reader:DumperReader):
     reader = reader.ticlDumperReader
     return CPToTracksterProperties(reader.assocs_bestScore_simToRecoMerged_df, reader.trackstersMerged_zipped[trackster_basic_fields],
             reader.simTrackstersCP_df)
 CPtoTracksterMerged_properties = DataframeComputation(_CPtoTracksterMerged_fct, "CPtoTracksterMerged_properties")
+
+def _CPtoCandidate_fct(reader:DumperReader):
+    reader = reader.ticlDumperReader
+    return CPToCandidateProperties(reader.assocs_bestScore_simToRecoMerged_df, reader.candidates_zipped[candidate_basic_fields],
+            reader.simTrackstersCP_df)
+CPtoCandidate_properties = DataframeComputation(_CPtoCandidate_fct, "CPtoCandidate_properties")

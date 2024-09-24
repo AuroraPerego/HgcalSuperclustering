@@ -7,6 +7,7 @@ from typing import Union
 from .assocs import assocs_toDf
 
 trackster_basic_fields = ["ts_id", "raw_energy", "raw_em_energy", "regressed_energy", "raw_pt", "raw_em_pt", "barycenter_eta", "barycenter_phi", 'barycenter_x', 'barycenter_y']
+candidate_basic_fields = ["candidate_charge", "candidate_pdgId", "candidate_raw_energy", "candidate_px", "candidate_py", "candidate_pz", "track_in_candidate", 'candidate_time', 'candidate_timeErr']
 
 def tracksters_toDf(tracksters:ak.Array) -> pd.DataFrame:
     """ Makes a dataframe with all tracksters
@@ -29,6 +30,26 @@ def tracksters_toDf(tracksters:ak.Array) -> pd.DataFrame:
         else:
             raise e
             
+def candidates_toDf(tracksters:ak.Array) -> pd.DataFrame:
+    """ Makes a dataframe with all tracksters
+    Index : eventInternal, ts_id
+    """
+    assert tracksters.ndim == 2, "Tracksters ak.Array should not include vertices information (or other nested fields)"
+    try:
+        if "tracksters_in_candidate" in tracksters.fields:
+            return (ak.to_dataframe(tracksters, 
+                levelname=lambda x : {0:"eventInternal", 1:"ts_id_wrong"}[x])
+                .reset_index("ts_id_wrong", drop=True)
+                .set_index("ts_id", append=True)
+            )
+        else:
+            return ak.to_dataframe(tracksters, 
+                levelname=lambda x : {0:"eventInternal", 1:"ts_id"}[x])
+    except KeyError as e:
+        if e.args[0] == 2:
+            raise ValueError("Tracksters ak.Array should not include vertices information (or other nested fields)") from e
+        else:
+            raise e
 
 def _convertTsToDataframe(tracksters:Union[ak.Array,pd.DataFrame]) -> pd.DataFrame:
     """ COnvert if needed an ak.Array of tracksters to dataframe """
@@ -55,6 +76,30 @@ def tracksters_joinWithSimTracksters(tracksters:ak.Array, simTracksters:ak.Array
         suffixes=(None, "_sim")
     )
 
+def _convertCandToDataframe(tracksters:Union[ak.Array,pd.DataFrame]) -> pd.DataFrame:
+    """ COnvert if needed an ak.Array of tracksters to dataframe """
+    if isinstance(tracksters, ak.Array):
+        return candidates_toDf(tracksters)
+    else:
+        return tracksters
+
+def candidates_joinWithSimTracksters(tracksters:ak.Array, simTracksters:ak.Array, assoc:ak.Array, score_threshold=assocs_toDf.__defaults__[0]) -> pd.DataFrame:
+    """ Make a merged dataframe holding trackster information joined with the sim tracksters information.
+    Only tracksters with an association are kept.
+    Index : eventInternal ts_id
+    """
+    df_merged_1 = pd.merge(
+        candidates_toDf(tracksters),
+        assocs_toDf(assoc, score_threshold=score_threshold),
+        left_index=True, right_index=True
+    )
+    return pd.merge(
+        df_merged_1,
+        tracksters_toDf(simTracksters),
+        left_on=["eventInternal", "simts_id"], right_index=True,
+        how="left",
+        suffixes=(None, "_sim")
+    )
 
 def tracksters_getSeeds(tracksters_zipped:ak.Array) -> ak.Array:
     """ For each event, select the seed tracksters (largest pt trackster for each endcap) 

@@ -89,18 +89,6 @@ class DumperReader:
         return self.fileDir["trackstersmerged"].arrays()
 
     @cached_property
-    def candidates(self) -> ak.Array:
-        return self.fileDir["candidates"].arrays()
-
-    @cached_property
-    def simCandidates(self) -> ak.Array:
-        return self.fileDir["simTICLCandidate"].arrays()
-
-    @cached_property
-    def tracks(self) -> ak.Array:
-        return self.fileDir["tracks"].arrays()
-
-    @cached_property
     def trackstersMerged_zipped(self) -> ak.Array:
         # Create the base dictionary
         base_dict = {"ts_id": ak.local_index(self.trackstersMerged.raw_energy, axis=1)}
@@ -114,8 +102,33 @@ class DumperReader:
         )
 
     @cached_property
+    def candidates(self) -> ak.Array:
+        return self.fileDir["candidates"].arrays() #["track_in_candidate", "tracksters_in_candidate"]
+
+    @cached_property
+    def candidates_zipped(self) -> ak.Array:
+        # Create the base dictionary
+        base_dict = {"ts_id": ak.Array([x[0] if len(x) > 0 else -1 for x in subarray] for subarray in self.candidates.tracksters_in_candidate)}
+        # Update the base dictionary with the other fields
+        base_dict.update({key: self.candidates[key] for key in self.candidates.fields
+                          if key not in ["event", "NCandidates", "candidate_id_probabilities", "tracksters_in_candidate"]})
+        return ak.zip(
+            base_dict,
+            depth_limit=2,  # don't try to zip vertices
+            with_name="candidates"
+        )
+
+    @cached_property
+    def simCandidates(self) -> ak.Array:
+        return self.fileDir["simTICLCandidate"].arrays()
+
+    @cached_property
+    def tracks(self) -> ak.Array:
+        return self.fileDir["tracks"].arrays()
+
+    @cached_property
     def simTrackstersCP(self) -> ak.Array:
-        return self.fileDir["simtrackstersCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "barycenter_*"])
+        return self.fileDir["simtrackstersCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "raw_pt"])
     @cached_property
     def simTrackstersCP_df(self) -> pd.DataFrame:
         return ak.to_dataframe(self.simTrackstersCP, levelname=lambda x : {0:"eventInternal", 1:"caloparticle_id"}[x])
@@ -142,8 +155,8 @@ class DumperReader:
 
     @cached_property
     def associations(self) -> ak.Array:
-        return self.fileDir["associations"].arrays(filter_name=["event_", "tsCLUE3D_*", 'ticlCandidate_*', 'Mergetracksters_*'])
-
+        # return self.fileDir["associations"].arrays(filter_name=["ticlCandidate_simToReco_CP", "ticlCandidate_recoToSim_CP", "ticlCandidate_simToReco_CP_*", "ticlCandidate_recoToSim_CP_*", "Mergetracksters_recoToSim_CP", "Mergetracksters_recoToSim_CP_*"])
+        return self.fileDir["associations"].arrays(filter_name=["event_", 'ticlCandidate_*', 'Mergetracksters_*']) #"tsCLUE3D_*", 
 
     @cached_property
     def supercluster_df(self) -> pd.DataFrame:
