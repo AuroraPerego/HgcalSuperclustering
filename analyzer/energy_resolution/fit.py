@@ -126,24 +126,15 @@ def fill_den_eff_histo(h:hist.Hist, df:pd.DataFrame, minShared:float, var:str):
 #     print(getattr(df,var))
     h.fill(getattr(df, var))
 
-
-def fitMultiHistogram(h:list[hist.Hist], sigmaEff:bool=False) -> list[list[CruijffFitResult]]:
+def fitMultiHistogram(h:hist.Hist) -> list[list[CruijffFitResult]]:
     """ Cruijff fit of multi-dimensional histogram of Supercluster/CaloParticle energy """
     res = []
-    sigmasEff = []
-#     for eta_bin in range(len(h[0].axes["absSeedEta"])):
-
-    for i in range(len(h)):
-        h_1d = h[i]
+    for eta_bin in range(len(h.axes["absSeedEta"])):
         res.append([])
-        sigmasEff.append([])
-#         for seedPt_bin in range(len(h)):
-#             print(eta_bin, seedPt_bin)
-#             h_1d = h[seedPt_bin][{"absSeedEta":eta_bin, "seedPt":0}]
-        fitR, sEff = fitCruijff(h_1d, sigmaEff)
-        res[-1] = fitR
-        sigmasEff[-1] = sEff
-    return (res, sigmasEff)
+        for seedPt_bin in range(len(h.axes["seedPt"])):
+            h_1d = h[{"absSeedEta":eta_bin, "seedPt":seedPt_bin}]
+            res[-1].append(fitCruijff(h_1d))
+    return res
 
 def plotSingleHistWithFit(h_1d:hist.Hist, fitRes:CruijffFitResult, ax=None):
     if ax is None:
